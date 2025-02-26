@@ -54,10 +54,15 @@ const chat: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   )
 
   /**
-   * 
+   * This can be rendered as a button in the app.
    */
   fastify.get("/connect", async function (request, reply) {
-    const transaction = await a0.createAuthorizationURL({});
+    const transaction = await a0.createAuthorizationURL({
+      connection: "google-oauth2",
+      access_type: "offline",
+      // Make sure you have https://auth0.com/docs/authenticate/identity-providers/pass-parameters-to-idps params['prompt'] = 'prompt' for `google-oauth2` 
+      prompt: "consent", 
+    });
     transactions.set(transaction.state, transaction.codeVerifier);
 
     return reply.redirect(transaction.url);
