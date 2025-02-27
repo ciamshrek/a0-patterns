@@ -5,6 +5,8 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { auth0 } from "@/lib/auth0";
 import CalendarEvents from "./calendar-events";
 
+export const dynamic = 'force-dynamic';
+
 /**
  * Main Screen
  * 

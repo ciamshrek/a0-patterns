@@ -9,11 +9,11 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
     <Router>
       <Auth0Provider
-        domain={import.meta.env.AUTH0_DOMAIN}
-        clientId={import.meta.env.AUTH0_CLIENT_ID}
+        domain={import.meta.env.VITE_AUTH0_DOMAIN}
+        clientId={import.meta.env.VITE_AUTH0_CLIENT_ID}
         authorizationParams={{
-          audience: import.meta.env.AUTH0_AUDIENCE,
-          scope: import.meta.env.AUTH0_SCOPE,
+          audience: import.meta.env.VITE_AUTH0_AUDIENCE,
+          scope: import.meta.env.VITE_AUTH0_SCOPE,
           redirect_uri: window.location.origin,
         }}
       >

@@ -1,11 +1,14 @@
 import * as oauth2 from "oauth4webapi";
+import * as jose from "jose";
+// import hkdf from "@panva/hkdf";
+
 // let oauth = require('oauth4webapi')
 export const GRANT_TYPE_FEDERATED_CONNECTION_ACCESS_TOKEN =
   "urn:auth0:params:oauth:grant-type:token-exchange:federated-connection-access-token";
 const SUBJECT_TYPE_REFRESH_TOKEN =
   "urn:ietf:params:oauth:token-type:refresh_token";
 
-export const SUBJECT_TYPE_ACCESS_TOKEN = 
+export const SUBJECT_TYPE_ACCESS_TOKEN =
   "urn:ietf:params:oauth:token-type:access_token";
 
 export const REQUESTED_TOKEN_TYPE_FEDERATED_CONNECTION_ACCESS_TOKEN =
@@ -16,18 +19,53 @@ const REQUESTED_TOKEN_TYPE_SESSION_TOKEN =
 
 const CUSTOM_SUBJECT_TOKEN = "urn:auth101:sso:access_token";
 
-const TOKEN_EXCHANGE = 'urn:ietf:params:oauth:grant-type:token-exchange';
+const TOKEN_EXCHANGE = "urn:ietf:params:oauth:grant-type:token-exchange";
 
+export class Auth0Helper {
+  public static readonly CODE_CHALLENGE_METHOD = "S256";
 
+  /**
+   * Helper function to create object for the Action from @abbaspour/client-initiated-account-linking
+   * 
+   * @param param0 
+   */
+  static linkAccount({ connection, connection_scope, scope, ...rest }: { connection: string, connection_scope: string, [key:string]: string }) {
+    return {
+      ...rest,
+      'ext-requested_connection': connection,
+      'ext-requested_connection_scope': connection_scope,
+      'audience': process.env.AUTH0_AUDIENCE!,
+      'scope': 'openid link_account'
+    };
+  }
 
-export class Auth0Helper  {
-  public static readonly CODE_CHALLENGE_METHOD = 'S256';
+  /**
+   * Helper function to create authorization object for @abbaspour/client-initiated-account-linking
+   * 
+   * @param params must be a dictionary containing connection as the connection-name of the identity to unlink
+   * @returns 
+   */
+  static unlinkAccounts({ connection }: { connection: string }) {
+    return {
+      'scope': 'openid unlink_account',
+      'audience': process.env.AUTH0_AUDIENCE!
+    }
+  }
 
+  /**
+   * Creates an account
+   * 
+   * @param domain 
+   * @param clientId 
+   * @param clientSecret 
+   * @param redirectUri 
+   * @returns 
+   */
   static async create(
     domain: string,
     clientId: string,
     clientSecret: string,
-    redirectUri: string,
+    redirectUri: string
   ): Promise<Auth0Helper> {
     const issuer = new URL(domain);
     const as = await oauth2
@@ -50,7 +88,7 @@ export class Auth0Helper  {
 
   async createAuthorizationURL(
     additionalParams: Record<string, string>
-  ): Promise<{ url: string, codeVerifier: string, state: string }> {
+  ): Promise<{ url: string; codeVerifier: string; state: string }> {
     const codeVerifier = oauth2.generateRandomCodeVerifier();
     const codeChallenge = await oauth2.calculatePKCECodeChallenge(codeVerifier);
     const state = oauth2.generateRandomState();
@@ -72,10 +110,7 @@ export class Auth0Helper  {
     params.set("response_type", "code");
     params.set("scope", scope);
     params.set("code_challenge", codeChallenge);
-    params.set(
-      "code_challenge_method",
-      Auth0Helper.CODE_CHALLENGE_METHOD
-    );
+    params.set("code_challenge_method", Auth0Helper.CODE_CHALLENGE_METHOD);
     params.set("state", state);
 
     /**
@@ -112,11 +147,7 @@ export class Auth0Helper  {
     return { url: authorizationUrl.toString(), codeVerifier, state };
   }
 
-  async handleCallback(
-    codeVerifier: string,
-    code: string,
-    state: string
-  ) {
+  async handleCallback(codeVerifier: string, code: string, state: string) {
     const responseUrl = new URL(this.client.redirect_uri);
     responseUrl.searchParams.set("code", code);
     responseUrl.searchParams.set("state", state);
@@ -148,9 +179,9 @@ export class Auth0Helper  {
 
   /**
    * Implements a Custom Token Exchange to exchange an AT for an RT. That we can then use for Native to Web
-   * 
-   * @param refreshToken 
-   * @returns 
+   *
+   * @param refreshToken
+   * @returns
    */
   async customTokenExchange(accessToken: string) {
     const params = new URLSearchParams();
@@ -192,9 +223,9 @@ export class Auth0Helper  {
 
   /**
    * This one actually does the native to web
-   * 
-   * @param refreshToken 
-   * @returns 
+   *
+   * @param refreshToken
+   * @returns
    */
   async nativeToWeb(refreshToken: string): Promise<string> {
     const params = new URLSearchParams();
@@ -203,11 +234,7 @@ export class Auth0Helper  {
     params.append("subject_token", refreshToken);
     params.append("client_id", "yi2T5EfjD9fiZ2NLBYH1tYDMasWUn5S6");
 
-    params.append(
-      "requested_token_type",
-      REQUESTED_TOKEN_TYPE_SESSION_TOKEN
-    );
-
+    params.append("requested_token_type", REQUESTED_TOKEN_TYPE_SESSION_TOKEN);
 
     const httpResponse = await oauth2.genericTokenEndpointRequest(
       this.as,
@@ -221,17 +248,45 @@ export class Auth0Helper  {
 
     let tokenEndpointResponse: { access_token: string };
     try {
-      tokenEndpointResponse = (await httpResponse.json()) as { access_token: string};
+      tokenEndpointResponse = (await httpResponse.json()) as {
+        access_token: string;
+      };
       return tokenEndpointResponse.access_token;
     } catch (err) {
       throw new Error(
-        "Failed to exchange N2W Session Token " +
-          (err as Error).toString()
+        "Failed to exchange N2W Session Token " + (err as Error).toString()
       );
     }
   }
 
+  /**
+   * This is a helper function that must be called to first invoke account linking ticket
+   */
+  async createStatelessAuthorizeTicket<T extends { sub: string, authz_params: { [key: string]: string } }>({
+    sub,
+    ...rest
+  }: T) {
+    const key = new TextEncoder().encode(process.env.SIGNING_SECRET);
 
+    const token = new jose.SignJWT({
+      ...rest,
+    })
+      .setSubject(sub)
+      .setAudience("https://api.example/")
+      .setIssuer("https://api.example/")
+      .sign(key);
+
+    return token;
+  }
+
+  async resumeStatelessAuthorizeRequest<T extends { sub: string, authz_params: { [key: string]: string } }>(token: string, id_token_hint: string) {
+    const key = new TextEncoder().encode(process.env.SIGNING_SECRET);
+    const { payload } = await jose.jwtVerify<T>(token, key);
+    return this.createAuthorizationURL({
+      ...payload.authz_params,
+      id_token_hint,
+    });
+  }
 
   async federatedConnectionsTokenExchange(
     refreshToken: string,
