@@ -27,6 +27,10 @@ export function errorHandler(error: unknown) {
  * Simulates a very vocal, very local db.
  */
 const transactions = new Map<string, string>();
+
+/**
+ * @todo: Mongo
+ */
 const users = new Map<string, { refresh_token: string }>();
 
 interface AuthenticatedRequest extends FastifyRequest {
@@ -54,14 +58,33 @@ const chat: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   )
 
   /**
-   * This can be rendered as a button in the app.
+   * Calls PAR, creates a ticket
    */
-  fastify.get("/connect", async function (request, reply) {
+  fastify.post("/connect/start", { preValidation: fastify.authenticate }, async function(req, rep) {
+    return rep.badRequest();
+  });
+
+  /**
+   * This can be rendered as a button in the app.
+   * 
+   * 1. Call this one
+   * 2. Get the url for the /start
+   * 3. /start calls authorize
+   * 4. /callback
+   * 5. com.app.ios://
+   */
+  //  { preValidation: fastify.authenticate } 
+  fastify.get("/connect/", async function (request, reply) {
+    // PAR or JAR
     const transaction = await a0.createAuthorizationURL({
       connection: "google-oauth2",
-      access_type: "offline",
+      access_type: "offline", 
+      connection_scope: "",
       // Make sure you have https://auth0.com/docs/authenticate/identity-providers/pass-parameters-to-idps params['prompt'] = 'prompt' for `google-oauth2` 
       prompt: "consent", 
+
+      scope: 'link',
+      id_token_hint: '',
     });
     transactions.set(transaction.state, transaction.codeVerifier);
 
