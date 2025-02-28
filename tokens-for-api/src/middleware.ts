@@ -3,12 +3,6 @@ import { NextRequest } from "next/server"
 import { auth0 } from "./lib/auth0"
 
 export async function middleware(request: NextRequest) {
-  if (request.nextUrl.pathname === "/connect-google") {
-    const linkUrl = new URL("/auth/login", request.nextUrl.host);
-    linkUrl.searchParams.set("connection", "google-oauth2");
-    const nextRequest = new NextRequest(linkUrl, request);
-    return await auth0.middleware(nextRequest);
-  }
   return await auth0.middleware(request)
 }
 
