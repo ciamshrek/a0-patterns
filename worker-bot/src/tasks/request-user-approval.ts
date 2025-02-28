@@ -5,7 +5,7 @@ import { setTimeout } from "node:timers/promises";
 import { createStatelessAuthorizationTicket } from "../auth0-helpers";
 import { kv } from "../redis";
 
-const { AUTH0_DOMAIN, AUTH0_CLIENT_ID, AUTH0_CLIENT_SECRET, APP_HOST } = process.env;
+const { AUTH0_DOMAIN, AUTH0_CLIENT_ID, AUTH0_CLIENT_SECRET, APP_HOST, AUTH0_AUDIENCE, AUTH0_SCOPE } = process.env;
 
 export interface IRequestUserApprovalTaskContext
   extends IAuthenticatedTaskContext {
@@ -35,8 +35,10 @@ async function authorizeWithCIBA(
     console.log("Attempting CIBA Authentication...");
     response = await authClient.backchannel.authorize({
       userId,
-      scope: "openid",
-      binding_message: "hello", // The binding message should just be a short code
+      scope: AUTH0_SCOPE,// must have openid
+      binding_message: "hello", // @todo: The binding message should just be a short code
+      audience: AUTH0_AUDIENCE,
+      request_expiry: '300',
     });
 
     console.log(
@@ -105,11 +107,19 @@ export async function requestUserApproval(
   try {
     console.log("Falling back to Worker-based JWT + PAR...");
 
-    const { ticket, codeVerifier, state } = await createStatelessAuthorizationTicket(job.id, job.data.user_id, {
-        type: "item_approval",
-        item_name: job.data.found_item.name,
-        item_description: job.data.found_item.description,
-    });
+    const { ticket, codeVerifier, state } = await createStatelessAuthorizationTicket(
+        job.id, 
+        job.data.user_id, 
+        [{
+            type: "item_approval",
+            item_name: job.data.found_item.name,
+            item_description: job.data.found_item.description,
+        }], 
+        AUTH0_CLIENT_ID, 
+        AUTH0_AUDIENCE,
+        AUTH0_SCOPE,
+        `${process.env.APP_HOST}/async-auth/callback`
+    );
 
     // Store the state: codeVerifier
     kv.set(state, codeVerifier);

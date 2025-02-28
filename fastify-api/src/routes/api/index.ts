@@ -56,6 +56,12 @@ const chat: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
 
   /**
    * Creates a Link Start Ticket
+   * 
+   * POST /me/connect
+   * {
+   *  connection: 'google-oauth2',
+   *  connection_scope: 'calendar'
+   * }
    */
   fastify.post<{
     Body: {
@@ -64,7 +70,7 @@ const chat: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
       [key: string]: string;
     };
   }>(
-    "/connect/",
+    "/me/connect/",
     {
       // Makes sure `Authorization: Bearer Auth0_TOKEN` is present and valid.
       preValidation: fastify.authenticate,
@@ -84,6 +90,7 @@ const chat: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
         authz_params: Auth0Helper.linkAccount(body),
       });
 
+      // /connect/start, token=ey188238167c89d02
       return reply.send({
         endpoint: "/connect/start",
         token,
@@ -93,6 +100,9 @@ const chat: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
 
   /**
    * Start's Account Linking
+   * 
+   * iOS App, SPA opens new Tab: 
+   * GET /connect/start?token=ey188238167c89d02
    */
   fastify.get<{ Querystring: { id_token_hint: string; token: string } }>(
     "/connect/start",
@@ -220,6 +230,9 @@ const chat: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
               const userDict = users.get(sub);
 
               if (!userDict) {
+                return {
+
+                }
                 return new Error(
                   "Unable to get user's calendar events, user has not yet connected Google Calendar."
                 );

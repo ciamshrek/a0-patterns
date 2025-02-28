@@ -33,8 +33,9 @@ export async function handleAsyncCallback(job: Job<IHandleAsyncCallback>) {
     try {
         const tokens = await client.oauth.authorizationCodeGrantWithPKCE({
             code,
-            code_verifier: codeVerifier
-        })
+            code_verifier: codeVerifier,
+            redirect_uri: `${process.env.APP_HOST}/async-auth/callback`
+        });
     
         if (tokens) {
             console.log("Eventually successfull -- perform task here" );

@@ -27,10 +27,13 @@
     "@googleapis/calendar": "^9.7.9",
     "@panva/hkdf": "^1.2.1",
     "ai": "^4.1.46",
+    "auth0": "^4.18.0",
+    "bullmq": "^5.41.7",
     "fastify": "^5.0.0",
     "fastify-auth0-verify": "^3.0.0",
     "fastify-cli": "^7.3.0",
     "fastify-plugin": "^5.0.0",
+    "ioredis": "^5.5.0",
     "jose": "^6.0.8",
     "oauth4webapi": "^3.3.0",
     "zod": "^3.24.2"

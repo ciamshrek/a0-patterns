@@ -347,3 +347,26 @@ export class Auth0Helper {
     };
   }
 }
+
+
+
+/**
+ * Helper function that creates a JWT ticket that can be used
+ * by the library, to start the stateless authorization request
+ * via the API Backend.
+ * 
+ * @todo: encryption
+ */
+export async function consumeStatelessAuthorizationTicket(token: string) {
+
+    // Generate Worker-Signed JWT
+  const secretKey = new TextEncoder().encode(process.env.WORKER_HELPER_SHARED_SECRET!);
+  // @todo: encrypt
+  const { payload } = await jose.jwtVerify(token, secretKey, {
+    issuer: "worker-service",
+    audience: "api-auth-service",
+    algorithms: ["HS256"], 
+  });
+
+  return payload.params as Record<string, string>;
+}

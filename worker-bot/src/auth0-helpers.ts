@@ -16,7 +16,11 @@ const generateCodeChallenge = (codeVerifier) => {
 export async function createStatelessAuthorizationTicket(
   jobId: string,
   userId: string,
-  authorization_details: any
+  authorization_details: any,
+  client_id: string,
+  audience: string,
+  scope: string,
+  redirect_uri: string,
 ) {
 
     // Generate Worker-Signed JWT
@@ -31,9 +35,14 @@ export async function createStatelessAuthorizationTicket(
     aud: "api-auth-service",
     params: {
       // @todo: improve
+      client_id,
+      audience,
+      scope,
       authorization_details: JSON.stringify(authorization_details),
       code_challenge: codeChallenge,
-
+      response_type: 'code',
+      code_challenge_method: 'S256',
+      redirect_uri,
       // This is static for now, but can be encrypted
       // with additional data options about the request
       state,
