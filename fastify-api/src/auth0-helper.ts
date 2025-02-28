@@ -281,7 +281,15 @@ export class Auth0Helper {
 
   async resumeStatelessAuthorizeRequest<T extends { sub: string, authz_params: { [key: string]: string } }>(token: string, id_token_hint: string) {
     const key = new TextEncoder().encode(process.env.SIGNING_SECRET);
+    const JWKS = jose.createRemoteJWKSet(new URL('.well-known/jwks.json', process.env.AUTH0_DOMAIN!));
     const { payload } = await jose.jwtVerify<T>(token, key);
+
+    const { payload: idTokenPayload } = await jose.jwtVerify<T>(token, JWKS);
+
+    if (payload.sub !== idTokenPayload.sub) {
+      throw new Error("login_required")
+    }
+
     return this.createAuthorizationURL({
       ...payload.authz_params,
       id_token_hint,

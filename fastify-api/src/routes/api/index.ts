@@ -84,7 +84,7 @@ const chat: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
       }
 
       const body = request.body;
-
+      
       const token = a0.createStatelessAuthorizeTicket({
         sub: request.user.sub,
         authz_params: Auth0Helper.linkAccount(body),
@@ -108,13 +108,17 @@ const chat: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
     "/connect/start",
     async function (request, reply) {
       // PAR or JAR
-      const { id_token_hint: idTokenHint, token } = request.query;
-      const { codeVerifier, state, url } =
-        await a0.resumeStatelessAuthorizeRequest(token, idTokenHint);
-
-      // @todo: Encrypt this as a single transaction cookie and remove state dependence
-      reply.setCookie(state, codeVerifier);
-      return reply.redirect(url);
+      try {
+        const { id_token_hint: idTokenHint, token } = request.query;
+        const { codeVerifier, state, url } =
+          await a0.resumeStatelessAuthorizeRequest(token, idTokenHint);
+  
+        // @todo: Encrypt this as a single transaction cookie and remove state dependence
+        reply.setCookie(state, codeVerifier);
+        return reply.redirect(url);  
+      } catch(e) {
+        return reply.status(401).redirect("Unauthorized");
+      }
     }
   );
 
