@@ -271,6 +271,7 @@ export class Auth0Helper {
     const token = new jose.SignJWT({
       ...rest,
     })
+      .setProtectedHeader({ alg: "HS256" })
       .setSubject(sub)
       .setAudience("https://api.example/")
       .setIssuer("https://api.example/")
@@ -279,12 +280,12 @@ export class Auth0Helper {
     return token;
   }
 
-  async resumeStatelessAuthorizeRequest<T extends { sub: string, authz_params: { [key: string]: string } }>(token: string, id_token_hint: string) {
+  async resumeStatelessAuthorizeRequest<T extends { sub: string, authz_params: { [key: string]: string } }>(token: string, idTokenHint: string) {
     const key = new TextEncoder().encode(process.env.SIGNING_SECRET);
     const JWKS = jose.createRemoteJWKSet(new URL('.well-known/jwks.json', process.env.AUTH0_DOMAIN!));
     const { payload } = await jose.jwtVerify<T>(token, key);
 
-    const { payload: idTokenPayload } = await jose.jwtVerify<T>(token, JWKS);
+    const { payload: idTokenPayload } = await jose.jwtVerify<T>(idTokenHint, JWKS);
 
     if (payload.sub !== idTokenPayload.sub) {
       throw new Error("login_required")
@@ -292,7 +293,7 @@ export class Auth0Helper {
 
     return this.createAuthorizationURL({
       ...payload.authz_params,
-      id_token_hint,
+      idTokenHint,
     });
   }
 

@@ -70,7 +70,7 @@ const chat: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
       [key: string]: string;
     };
   }>(
-    "/me/connect/",
+    "/me/connect",
     {
       // Makes sure `Authorization: Bearer Auth0_TOKEN` is present and valid.
       preValidation: fastify.authenticate,
@@ -85,15 +85,15 @@ const chat: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
 
       const body = request.body;
       
-      const token = a0.createStatelessAuthorizeTicket({
+      const ticket = await a0.createStatelessAuthorizeTicket({
         sub: request.user.sub,
         authz_params: Auth0Helper.linkAccount(body),
       });
 
       // /connect/start, token=ey188238167c89d02
       return reply.send({
-        endpoint: "/connect/start",
-        token,
+        endpoint: "/api/connect/start",
+        ticket,
       });
     }
   );
@@ -104,19 +104,20 @@ const chat: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
    * iOS App, SPA opens new Tab: 
    * GET /connect/start?token=ey188238167c89d02
    */
-  fastify.get<{ Querystring: { id_token_hint: string; token: string } }>(
+  fastify.get<{ Querystring: { id_token_hint: string; ticket: string } }>(
     "/connect/start",
     async function (request, reply) {
       // PAR or JAR
       try {
-        const { id_token_hint: idTokenHint, token } = request.query;
+        const { id_token_hint: idTokenHint, ticket } = request.query;
         const { codeVerifier, state, url } =
-          await a0.resumeStatelessAuthorizeRequest(token, idTokenHint);
+          await a0.resumeStatelessAuthorizeRequest(ticket, idTokenHint);
   
         // @todo: Encrypt this as a single transaction cookie and remove state dependence
         reply.setCookie(state, codeVerifier);
         return reply.redirect(url);  
       } catch(e) {
+        console.error(e);
         return reply.status(401).redirect("Unauthorized");
       }
     }
@@ -147,7 +148,7 @@ const chat: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
       users.set(claims.sub, { refresh_token: tokens.refresh_token });
 
       // @todo: handle this better for iOS App
-      return reply.redirect("/");
+      return reply.redirect("http://localhost:5173"); 
     }
   );
 

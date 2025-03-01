@@ -34,6 +34,7 @@ async function getGoogleCalEvents(): Promise<IResponse> {
     }
 
     // This can throw an error `tokenset_not_found` if the social consent has not been granted
+    // Google Access Token
     const { token } = await auth0.getAccessTokenForConnection({
       connection: "google-oauth2",
     });
