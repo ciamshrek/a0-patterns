@@ -14,41 +14,22 @@ import { useAuth0 } from "@/lib/use-auth0";
  * Creates a wrapper function to create an http post request and connect at tool
  */
 function useConnectTool<T>(toolParams: T) {
-  const { fetch, getIdToken } = useAuth0();
+  const { fetch, getIdToken, loginWithPopup } = useAuth0();
   const [isLoading, updateIsLoading] = useState<boolean>(false);
 
   const connect = useCallback(
     async function () {
-      if (isLoading) {
-        return;
-      }
-
       updateIsLoading(true);
-      const response = await fetch("http://localhost:3000/api/me/connect", {
-        method: "POST",
-        body: JSON.stringify(toolParams),
+      const response = await loginWithPopup({
+        authorizationParams: {
+          scope: "openid profile link_account",
+          id_token_hint: await getIdToken(),
+          ...toolParams
+        }
       });
 
-      if (!response.ok) {
-        // set error tbd later
-        console.error(await response.text()); // try parse as json first, then parse as text if all fails, wost case network error
-        throw new Error(
-          "Unimplemented, should replace with error setting in state"
-        );
-      }
-
-      const { ticket, endpoint } = await response.json();
-      const url = new URL(endpoint, "http://localhost:3000");
-      url.searchParams.set("id_token_hint", await getIdToken());
-      url.searchParams.set("ticket", ticket);
-
-
-      window.location.href = url.toString();
-      // window.open(url, 'popup', 'width=600,height=400');
-      // window.addEventListener("close")
-      // window.onclose = () => {
-      //   updateIsLoading(false);
-      // }
+      // check response and validate errors here
+      updateIsLoading(false);
     },
     [fetch, isLoading, getIdToken]
   );
@@ -60,8 +41,8 @@ export default function ConnectTool() {
   const [isOpen, setIsOpen] = useState(false);
 
   const google = useConnectTool({
-    connection: "google-oauth2",
-    connection_scope: "https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events.readonly",
+    requested_connection: "google-oauth2",
+    requested_connection_scope: "https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events.readonly",
     access_type: "offline"
   });
 
